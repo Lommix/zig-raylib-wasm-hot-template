@@ -2,7 +2,7 @@ run:
 	zig build run -fincremental
 
 web:
-	zig build -Dtarget=wasm32-emscripten run --sysroot "Dummy"
+	zig build -Dtarget=wasm32-emscripten run --sysroot "NeedsToBeHereButGetsOverwritten"
 
 build:
-	zig build hot
+	zig build hot -fincremental
