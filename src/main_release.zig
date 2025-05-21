@@ -3,7 +3,7 @@ const std = @import("std");
 const game = @import("game.zig");
 
 pub fn main() !void {
-    rl.initWindow(640, 320, "test");
+    rl.initWindow(640, 320, "raylib-template");
     defer rl.closeWindow();
     rl.setTargetFPS(60);
 

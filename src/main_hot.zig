@@ -14,6 +14,7 @@ var force_reload = false;
 // extern
 var init: *const fn (allocator: *std.mem.Allocator) callconv(.C) *anyopaque = undefined;
 var update: *const fn (state: *anyopaque) callconv(.C) void = undefined;
+var reload: *const fn (state: *anyopaque) callconv(.C) void = undefined;
 var stateSize: *const fn () callconv(.C) usize = undefined;
 var last_mod: i128 = 0;
 var file_name: ?[]u8 = null;
@@ -22,7 +23,7 @@ pub fn main() !void {
     var arena = std.heap.ArenaAllocator.init(std.heap.c_allocator);
     var allocator = arena.allocator();
 
-    rl.initWindow(640, 320, "test");
+    rl.initWindow(640, 320, "raylib-template");
     defer rl.closeWindow();
     rl.setTargetFPS(60);
 
@@ -57,6 +58,7 @@ fn load_lib() !void {
     last_mod = stat.mtime;
     init = lib.?.lookup(@TypeOf(init), "init").?;
     update = lib.?.lookup(@TypeOf(update), "update").?;
+    reload = lib.?.lookup(@TypeOf(reload), "reload").?;
     stateSize = lib.?.lookup(@TypeOf(stateSize), "stateSize").?;
 }
 
@@ -70,13 +72,12 @@ fn watch(arena: *std.heap.ArenaAllocator, allocator: *std.mem.Allocator) !void {
         try load_lib();
 
         if (old_mem != stateSize() or force_reload) {
-            std.debug.print("memory layout for game state has changed, reinitializing the game...\n", .{});
+            std.debug.print("\nmemory layout for game state has changed, reinitializing the game...\n", .{});
             _ = arena.reset(.retain_capacity);
             allocator.* = arena.allocator();
             state = init(allocator);
         } else {
-            // game.reload(game.state);
-            //reload
+            reload(state);
         }
 
         std.debug.print("\n|-[reloaded]-|\n", .{});

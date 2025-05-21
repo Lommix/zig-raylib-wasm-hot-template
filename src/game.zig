@@ -24,6 +24,10 @@ pub export fn update(state: *GameState) callconv(.C) void {
     rl.endDrawing();
 }
 
+pub export fn reload(state: *GameState) callconv(.C) void {
+    _ = state;
+}
+
 pub export fn stateSize() callconv(.C) usize {
     return @sizeOf(GameState);
 }
