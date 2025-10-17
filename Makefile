@@ -1,8 +1,8 @@
 run:
-	zig build run -fincremental
+	zig build run
 
 web:
-	zig build -Dtarget=wasm32-emscripten run --sysroot "NeedsToBeHereButGetsOverwritten"
+	zig build -Dtarget=wasm32-emscripten web
 
-build:
-	zig build hot -fincremental
+hot:
+	zig build hot

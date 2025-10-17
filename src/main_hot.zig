@@ -14,10 +14,10 @@ var current_state_size = usize;
 var force_reload = false;
 
 // extern
-var init: *const fn (allocator: *std.mem.Allocator) callconv(.C) *anyopaque = undefined;
-var update: *const fn (state: *anyopaque) callconv(.C) void = undefined;
-var reload: *const fn (state: *anyopaque) callconv(.C) void = undefined;
-var stateSize: *const fn () callconv(.C) usize = undefined;
+var init: *const fn (allocator: *std.mem.Allocator) callconv(.c) *anyopaque = undefined;
+var update: *const fn (state: *anyopaque) callconv(.c) void = undefined;
+var reload: *const fn (state: *anyopaque) callconv(.c) void = undefined;
+var stateSize: *const fn () callconv(.c) usize = undefined;
 var last_mod: i128 = 0;
 var hot_lib_path: ?[]u8 = null;
 var running_lib_path: ?[]const u8 = null;

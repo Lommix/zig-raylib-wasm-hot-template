@@ -12,13 +12,11 @@ const Context = struct {
 pub fn build(b: *std.Build) !void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
-
     const raylib_dep = b.dependency("raylib_zig", .{
         .target = target,
         .optimize = optimize,
-        .shared = target.query.os_tag != .emscripten,
+        .linkage = .dynamic,
     });
-
     const raylib = raylib_dep.module("raylib");
     const raygui = raylib_dep.module("raygui");
     const raylib_artifact = raylib_dep.artifact("raylib");
@@ -33,10 +31,7 @@ pub fn build(b: *std.Build) !void {
 
     try build_hot(b, context);
 
-    if (target.result.cpu.arch.isWasm()) {
-        const emsdk = b.dependency("emsdk", .{});
-        const emsdk_incl_path = emsdk.path("upstream/emscripten").getPath(b);
-        b.sysroot = emsdk_incl_path;
+    if (target.query.os_tag == .emscripten) {
         try build_web(b, context);
     } else {
         try build_native(b, context);
@@ -74,27 +69,53 @@ fn build_web(
     b: *std.Build,
     ctx: Context,
 ) !void {
-    const exe_lib = try rlz.emcc.compileForEmscripten(b, "game", "src/main_release.zig", ctx.target, ctx.optimize);
-    exe_lib.linkLibrary(ctx.raylib_artifact);
-    exe_lib.root_module.addImport("raylib", ctx.raylib);
-    exe_lib.root_module.addImport("raygui", ctx.raygui);
+    const raylib_dep = b.dependency("raylib_zig", .{
+        .target = ctx.target,
+        .optimize = ctx.optimize,
+        .linkage = .static,
+    });
 
-    const link_step = try rlz.emcc.linkWithEmscripten(b, &[_]*std.Build.Step.Compile{ exe_lib, ctx.raylib_artifact });
+    const raylib = raylib_dep.module("raylib");
+    const raygui = raylib_dep.module("raygui");
+    const raylib_artifact = raylib_dep.artifact("raylib");
 
-    // -----------------------------------------------------------------------
-    // !!!EMBED FILES IF YOU HAVE ANY!!!
-    // link_step.addArg("--embed-file");
-    // link_step.addArg("res/");
-    // -----------------------------------------------------------------------
+    const mod = b.createModule(.{
+        .root_source_file = b.path("src/main_release.zig"),
+        .target = ctx.target,
+        .optimize = ctx.optimize,
+        .link_libc = false,
+    });
 
-    link_step.addArg("--shell-file");
-    link_step.addArg("shell.html");
+    mod.linkLibrary(raylib_artifact);
+    mod.addImport("raylib", raylib);
+    mod.addImport("raygui", raygui);
 
-    b.getInstallStep().dependOn(&link_step.step);
-    const run_step = try rlz.emcc.emscriptenRunStep(b);
-    run_step.step.dependOn(&link_step.step);
-    const run_option = b.step("run", "Run 'ray_play");
-    run_option.dependOn(&run_step.step);
+    const emsdk = rlz.emsdk;
+    const wasm = b.addLibrary(.{
+        .name = "village-game",
+        .root_module = mod,
+        .linkage = .static,
+    });
+
+    const install_dir: std.Build.InstallDir = .{ .custom = "web" };
+    const emcc_flags = emsdk.emccDefaultFlags(b.allocator, .{ .optimize = ctx.optimize });
+    const emcc_settings = emsdk.emccDefaultSettings(b.allocator, .{ .optimize = ctx.optimize });
+
+    const emcc_step = emsdk.emccStep(b, raylib_artifact, wasm, .{
+        .optimize = ctx.optimize,
+        .flags = emcc_flags,
+        .settings = emcc_settings,
+        .install_dir = install_dir,
+    });
+
+    b.getInstallStep().dependOn(emcc_step);
+
+    const html_filename = try std.fmt.allocPrint(b.allocator, "{s}.html", .{wasm.name});
+    const emrun_step = emsdk.emrunStep(b, b.getInstallPath(install_dir, html_filename), &.{});
+    emrun_step.dependOn(emcc_step);
+
+    const web_step = b.step("web", "web");
+    web_step.dependOn(emrun_step);
 }
 
 fn build_hot(
