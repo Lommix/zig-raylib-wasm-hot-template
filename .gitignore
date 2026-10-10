@@ -2,3 +2,6 @@
 zig-out
 hot/*
 !.gitkeep
+result
+/.direnv/
+zig-pkg/

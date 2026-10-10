@@ -20,7 +20,7 @@ pub export fn update(state: *GameState) callconv(.c) void {
 
     rl.beginDrawing();
     rl.clearBackground(rl.Color.sky_blue);
-    rl.drawText("Hello WORLD!", 20, 20, 32, .black);
+    rl.drawText("Hello Word!", 20, 20, 32, .black);
     rl.endDrawing();
 }
 

@@ -17,6 +17,9 @@ pub fn build(b: *std.Build) !void {
         .optimize = optimize,
         .linkage = .dynamic,
     });
+
+    if (b.graph.needed_lazy_dependencies.count() != 0) return error.LazyDependencyNeeded;
+
     const raylib = raylib_dep.module("raylib");
     const raygui = raylib_dep.module("raygui");
     const raylib_artifact = raylib_dep.artifact("raylib");
@@ -57,7 +60,7 @@ fn build_native(
         .root_module = exe_mod,
     });
 
-    exe.linkLibrary(ctx.raylib_artifact);
+    exe_mod.linkLibrary(ctx.raylib_artifact);
     b.installArtifact(exe);
     const run_cmd = b.addRunArtifact(exe);
     run_cmd.step.dependOn(b.getInstallStep());
@@ -101,17 +104,18 @@ fn build_web(
     const emcc_flags = emsdk.emccDefaultFlags(b.allocator, .{ .optimize = ctx.optimize });
     const emcc_settings = emsdk.emccDefaultSettings(b.allocator, .{ .optimize = ctx.optimize });
 
-    const emcc_step = emsdk.emccStep(b, raylib_artifact, wasm, .{
+    const emcc_step = try emsdk.emccStep(b, &.{}, &.{ raylib_artifact, wasm }, .{
         .optimize = ctx.optimize,
         .flags = emcc_flags,
         .settings = emcc_settings,
         .install_dir = install_dir,
+        .preload_paths = &.{.{ .src_path = b.path("res"), .virtual_path = "res" }},
+        .out_file_name = b.fmt("{s}.html", .{wasm.name}),
     });
 
     b.getInstallStep().dependOn(emcc_step);
 
-    const html_filename = try std.fmt.allocPrint(b.allocator, "{s}.html", .{wasm.name});
-    const emrun_step = emsdk.emrunStep(b, b.getInstallPath(install_dir, html_filename), &.{});
+    const emrun_step = try emsdk.emrunStep(b, b.graph.path(.install_prefix, b.fmt("web/{s}.html", .{wasm.name})), &.{});
     emrun_step.dependOn(emcc_step);
 
     const web_step = b.step("web", "web");
@@ -122,21 +126,24 @@ fn build_hot(
     b: *std.Build,
     ctx: Context,
 ) !void {
+    const mod = b.createModule(.{
+        .target = ctx.target,
+        .optimize = ctx.optimize,
+        .root_source_file = b.path("src/game.zig"),
+        .imports = &.{
+            .{ .name = "raylib", .module = ctx.raylib },
+            .{ .name = "raygui", .module = ctx.raygui },
+        },
+    });
+
+    mod.linkLibrary(ctx.raylib_artifact);
+
     const lib = b.addLibrary(.{
         .linkage = .dynamic,
         .name = "game",
-        .root_module = b.createModule(.{
-            .target = ctx.target,
-            .optimize = ctx.optimize,
-            .root_source_file = b.path("src/game.zig"),
-            .imports = &.{
-                .{ .name = "raylib", .module = ctx.raylib },
-                .{ .name = "raygui", .module = ctx.raygui },
-            },
-        }),
+        .root_module = mod,
     });
 
-    lib.linkLibrary(ctx.raylib_artifact);
     const lib_install = b.addInstallArtifact(lib, .{});
     const step = b.step("hot", "build lib");
     step.dependOn(&lib_install.step);

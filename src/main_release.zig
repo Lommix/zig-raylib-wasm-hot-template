@@ -4,7 +4,7 @@ const game = @import("game.zig");
 
 pub fn main() !void {
     rl.initWindow(640, 320, "raylib-template");
-    defer rl.closeWindow();
+    defer if (rl.isWindowReady()) rl.closeWindow();
     rl.setTargetFPS(60);
 
     var allocator = std.heap.c_allocator;

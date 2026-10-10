@@ -2,15 +2,15 @@
     .name = .lommix_demo,
     .version = "0.0.0",
     .fingerprint = 0x437de74b108f6a21, // Changing this has security and trust implications.
-    .minimum_zig_version = "0.15.1",
+    .minimum_zig_version = "0.17.0",
     .dependencies = .{
         .emsdk = .{
             .url = "git+https://github.com/emscripten-core/emsdk?ref=4.0.9#3bcf1dcd01f040f370e10fe673a092d9ed79ebb5",
             .hash = "N-V-__8AAJl1DwBezhYo_VE6f53mPVm00R-Fk28NPW7P14EQ",
         },
         .raylib_zig = .{
-            .url = "git+https://github.com/raylib-zig/raylib-zig#163b1ef2e993fe7cc7c76bb3213d98612f4b7676",
-            .hash = "raylib_zig-5.6.0-dev-KE8REGNJBQDSjjyCmf4ATVQtk_OaBpY0B7kBxwSOPEGZ",
+            .url = "git+https://github.com/raylib-zig/raylib-zig#50d450099da664bedd7dcc6ed40204ab0bb861a5",
+            .hash = "raylib_zig-6.0.0-KE8REDSmBQAbyUv_Fh71wgvhQSP2zsmVxtPRLzCgIXWK",
         },
     },
     .paths = .{

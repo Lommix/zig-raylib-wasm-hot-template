@@ -11,8 +11,19 @@ A template for building games with Zig and Raylib that can run both natively and
 
 ## Prerequisites
 
-- Zig (latest)
+- Zig 0.17.0
 - Make (optional, for convenience commands)
+
+## Development Environment
+
+This project requires Zig 0.17.0. The nix flake provides the toolchain:
+
+```bash
+nix develop
+zig build run
+```
+
+Native builds link against the system GL/X11 development libraries (Arch: `mesa` `libx11` `libxrandr` `libxinerama` `libxi` `libxcursor`); the flake provides only the Zig toolchain.
 
 ## Quick Start
 
@@ -27,7 +38,7 @@ zig build run
 While running, you can edit the source files. Then run the following command to hot reload the game without restarting:
 
 ```bash
-make build
+make hot
 # or
 zig build hot -fincremental
 ```
@@ -36,12 +47,10 @@ zig build hot -fincremental
 
 This will create a release build, that will not include the hot reload functionality.
 
-The sysroot will be overwritten by build.zig.
-
 ```bash
 make web
 # or
-zig build -Dtarget=wasm32-emscripten run --sysroot "NeedsToBeHereButGetsOverwritten"
+zig build -Dtarget=wasm32-emscripten web
 ```
 
 ## Project Structure
@@ -50,7 +59,7 @@ zig build -Dtarget=wasm32-emscripten run --sysroot "NeedsToBeHereButGetsOverwrit
 - `src/main_hot.zig` - Hot reload entry point for development
 - `src/main_release.zig` - Release entry point for production builds
 - `shell.html` - HTML template for web builds
-- `res/` - Resource directory (embed files here for web builds)
+- `res/` - Resource directory, preloaded into web builds
 
 ## Hot Reload
 
@@ -58,4 +67,4 @@ The hot reload system allows you to modify game code and see changes instantly w
 
 ## Web Deployment
 
-Web builds use Emscripten to compile to WebAssembly. To embed assets in your web build, uncomment the embed-file lines in `build.zig` and place your assets in the `res/` directory.
+Web builds use Emscripten to compile to WebAssembly. The `res/` directory is preloaded into the web build by default, producing `zig-out/web/village-game.data`.

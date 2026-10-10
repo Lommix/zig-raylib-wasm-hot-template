@@ -6,3 +6,6 @@ web:
 
 hot:
 	zig build hot
+
+watch:
+	zig build hot --watch

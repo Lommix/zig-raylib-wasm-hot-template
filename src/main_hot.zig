@@ -18,9 +18,11 @@ var init: *const fn (allocator: *std.mem.Allocator) callconv(.c) *anyopaque = un
 var update: *const fn (state: *anyopaque) callconv(.c) void = undefined;
 var reload: *const fn (state: *anyopaque) callconv(.c) void = undefined;
 var stateSize: *const fn () callconv(.c) usize = undefined;
-var last_mod: i128 = 0;
+var last_mod: std.Io.Timestamp = .zero;
 var hot_lib_path: ?[]u8 = null;
 var running_lib_path: ?[]const u8 = null;
+
+const io = std.Io.Threaded.global_single_threaded.io();
 
 pub fn main() !void {
     try update_running_lib_path();
@@ -28,7 +30,7 @@ pub fn main() !void {
     var arena = std.heap.ArenaAllocator.init(std.heap.c_allocator);
     var allocator = arena.allocator();
     rl.initWindow(640, 320, "raylib-template");
-    defer rl.closeWindow();
+    defer if (rl.isWindowReady()) rl.closeWindow();
     rl.setTargetFPS(60);
 
     load_lib() catch unreachable;
@@ -45,16 +47,16 @@ pub fn main() !void {
         };
     }
 
-    rl.closeWindow();
     arena.deinit();
 }
 
 fn load_lib() !void {
     std.debug.print("from {s} to {s}\n", .{ running_lib_path.?, hot_lib_path.? });
 
-    try std.fs.cwd().copyFile(running_lib_path.?, std.fs.cwd(), hot_lib_path.?, .{});
+    const cwd = std.Io.Dir.cwd();
+    try cwd.copyFile(running_lib_path.?, cwd, hot_lib_path.?, io, .{});
 
-    const stat = std.fs.cwd().statFile(running_lib_path.?) catch |err| {
+    const stat = cwd.statFile(io, running_lib_path.?, .{}) catch |err| {
         std.debug.print("error checking file exists {s}: {}\n", .{ running_lib_path.?, err });
         return err;
     };
@@ -96,26 +98,27 @@ fn get_lib_ext() ![]const u8 {
 
 fn update_hot_lib_path() !void {
     const ext = try get_lib_ext();
-    hot_lib_path = try std.fmt.allocPrint(std.heap.c_allocator, "{s}/libgame_{d}.{s}", .{ LIB_DIR, std.time.milliTimestamp(), ext });
+    const now = std.Io.Clock.real.now(io).nanoseconds;
+    hot_lib_path = try std.heap.c_allocator.print("{s}/libgame_{d}.{s}", .{ LIB_DIR, now, ext });
 }
 
 fn update_running_lib_path() !void {
     const ext = try get_lib_ext();
-    running_lib_path = try std.fmt.allocPrint(std.heap.c_allocator, "{s}{s}.{s}", .{ LIB_PATH, LIB_FILENAME, ext });
+    running_lib_path = try std.heap.c_allocator.print("{s}{s}.{s}", .{ LIB_PATH, LIB_FILENAME, ext });
 }
 
 fn file_changed() !bool {
-    const stats = std.fs.cwd().statFile(running_lib_path.?) catch |err| {
+    const stats = std.Io.Dir.cwd().statFile(io, running_lib_path.?, .{}) catch |err| {
         std.debug.print("error checking file changed {s}: {}\n", .{ running_lib_path.?, err });
         return err;
     };
-    return stats.mtime > last_mod;
+    return stats.mtime.nanoseconds > last_mod.nanoseconds;
 }
 
 fn unload_lib() !void {
     lib.?.close();
     lib = null;
-    std.fs.cwd().deleteFile(hot_lib_path.?) catch |err| {
+    std.Io.Dir.cwd().deleteFile(io, hot_lib_path.?) catch |err| {
         std.debug.print("error deleting file {s}: {}\n", .{ hot_lib_path.?, err });
         return err;
     };
